@@ -1,6 +1,6 @@
 /*
 ** LuaJIT VM builder.
-** Copyright (C) 2005-2016 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2017 Mike Pall. See Copyright Notice in luajit.h
 **
 ** This is a tool to build the hand-tuned assembler code required for
 ** LuaJIT's bytecode interpreter. It supports a variety of output formats
@@ -65,6 +65,8 @@ static int collect_reloc(BuildCtx *ctx, uint8_t *addr, int idx, int type);
 #include "../dynasm/dasm_ppc.h"
 #elif LJ_TARGET_MIPS
 #include "../dynasm/dasm_mips.h"
+#elif LJ_TARGET_S390X
+#include "../dynasm/dasm_s390x.h"
 #else
 #error "No support for this architecture (yet)"
 #endif
@@ -110,7 +112,7 @@ static const char *sym_decorate(BuildCtx *ctx,
   if (p) {
 #if LJ_TARGET_X86ORX64
     if (!LJ_64 && (ctx->mode == BUILD_coffasm || ctx->mode == BUILD_peobj))
-      name[0] = '@';
+      name[0] = name[1] == 'R' ? '_' : '@';  /* Just for _RtlUnwind@16. */
     else
       *p = '\0';
 #elif LJ_TARGET_PPC && !LJ_TARGET_CONSOLE

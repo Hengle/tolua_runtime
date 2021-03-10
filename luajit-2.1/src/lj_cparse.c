@@ -1,6 +1,6 @@
 /*
 ** C declaration parser.
-** Copyright (C) 2005-2016 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2017 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #include "lj_obj.h"
@@ -297,13 +297,17 @@ static CPToken cp_next_(CPState *cp)
       else return '/';
       break;
     case '|':
-      if (cp_get(cp) != '|') return '|'; cp_get(cp); return CTOK_OROR;
+      if (cp_get(cp) != '|') return '|';
+      cp_get(cp); return CTOK_OROR;
     case '&':
-      if (cp_get(cp) != '&') return '&'; cp_get(cp); return CTOK_ANDAND;
+      if (cp_get(cp) != '&') return '&';
+      cp_get(cp); return CTOK_ANDAND;
     case '=':
-      if (cp_get(cp) != '=') return '='; cp_get(cp); return CTOK_EQ;
+      if (cp_get(cp) != '=') return '=';
+      cp_get(cp); return CTOK_EQ;
     case '!':
-      if (cp_get(cp) != '=') return '!'; cp_get(cp); return CTOK_NE;
+      if (cp_get(cp) != '=') return '!';
+      cp_get(cp); return CTOK_NE;
     case '<':
       if (cp_get(cp) == '=') { cp_get(cp); return CTOK_LE; }
       else if (cp->c == '<') { cp_get(cp); return CTOK_SHL; }
@@ -313,7 +317,8 @@ static CPToken cp_next_(CPState *cp)
       else if (cp->c == '>') { cp_get(cp); return CTOK_SHR; }
       return '>';
     case '-':
-      if (cp_get(cp) != '>') return '-'; cp_get(cp); return CTOK_DEREF;
+      if (cp_get(cp) != '>') return '-';
+      cp_get(cp); return CTOK_DEREF;
     case '$':
       return cp_param(cp);
     case '\0': return CTOK_EOF;
@@ -571,28 +576,34 @@ static void cp_expr_infix(CPState *cp, CPValue *k, int pri)
 	k->id = k2.id > k3.id ? k2.id : k3.id;
 	continue;
       }
+      /* fallthrough */
     case 1:
       if (cp_opt(cp, CTOK_OROR)) {
 	cp_expr_sub(cp, &k2, 2); k->i32 = k->u32 || k2.u32; k->id = CTID_INT32;
 	continue;
       }
+      /* fallthrough */
     case 2:
       if (cp_opt(cp, CTOK_ANDAND)) {
 	cp_expr_sub(cp, &k2, 3); k->i32 = k->u32 && k2.u32; k->id = CTID_INT32;
 	continue;
       }
+      /* fallthrough */
     case 3:
       if (cp_opt(cp, '|')) {
 	cp_expr_sub(cp, &k2, 4); k->u32 = k->u32 | k2.u32; goto arith_result;
       }
+      /* fallthrough */
     case 4:
       if (cp_opt(cp, '^')) {
 	cp_expr_sub(cp, &k2, 5); k->u32 = k->u32 ^ k2.u32; goto arith_result;
       }
+      /* fallthrough */
     case 5:
       if (cp_opt(cp, '&')) {
 	cp_expr_sub(cp, &k2, 6); k->u32 = k->u32 & k2.u32; goto arith_result;
       }
+      /* fallthrough */
     case 6:
       if (cp_opt(cp, CTOK_EQ)) {
 	cp_expr_sub(cp, &k2, 7); k->i32 = k->u32 == k2.u32; k->id = CTID_INT32;
@@ -601,6 +612,7 @@ static void cp_expr_infix(CPState *cp, CPValue *k, int pri)
 	cp_expr_sub(cp, &k2, 7); k->i32 = k->u32 != k2.u32; k->id = CTID_INT32;
 	continue;
       }
+      /* fallthrough */
     case 7:
       if (cp_opt(cp, '<')) {
 	cp_expr_sub(cp, &k2, 8);
@@ -635,6 +647,7 @@ static void cp_expr_infix(CPState *cp, CPValue *k, int pri)
 	k->id = CTID_INT32;
 	continue;
       }
+      /* fallthrough */
     case 8:
       if (cp_opt(cp, CTOK_SHL)) {
 	cp_expr_sub(cp, &k2, 9); k->u32 = k->u32 << k2.u32;
@@ -647,6 +660,7 @@ static void cp_expr_infix(CPState *cp, CPValue *k, int pri)
 	  k->u32 = k->u32 >> k2.u32;
 	continue;
       }
+      /* fallthrough */
     case 9:
       if (cp_opt(cp, '+')) {
 	cp_expr_sub(cp, &k2, 10); k->u32 = k->u32 + k2.u32;
@@ -656,6 +670,7 @@ static void cp_expr_infix(CPState *cp, CPValue *k, int pri)
       } else if (cp_opt(cp, '-')) {
 	cp_expr_sub(cp, &k2, 10); k->u32 = k->u32 - k2.u32; goto arith_result;
       }
+      /* fallthrough */
     case 10:
       if (cp_opt(cp, '*')) {
 	cp_expr_unary(cp, &k2); k->u32 = k->u32 * k2.u32; goto arith_result;
@@ -1054,7 +1069,7 @@ static void cp_decl_gccattribute(CPState *cp, CPDecl *decl)
     if (cp->tok == CTOK_IDENT) {
       GCstr *attrstr = cp->str;
       cp_next(cp);
-      switch (attrstr->hash) {
+      switch (lj_str_indep_hash(attrstr)) {
       case H_(64a9208e,8ce14319): case H_(8e6331b2,95a282af):  /* aligned */
 	cp_decl_align(cp, decl);
 	break;
@@ -1123,7 +1138,7 @@ static void cp_decl_msvcattribute(CPState *cp, CPDecl *decl)
   while (cp->tok == CTOK_IDENT) {
     GCstr *attrstr = cp->str;
     cp_next(cp);
-    switch (attrstr->hash) {
+    switch (lj_str_indep_hash(attrstr)) {
     case H_(bc2395fa,98f267f8):  /* align */
       cp_decl_align(cp, decl);
       break;
@@ -1713,16 +1728,16 @@ static void cp_pragma(CPState *cp, BCLine pragmaline)
 {
   cp_next(cp);
   if (cp->tok == CTOK_IDENT &&
-      cp->str->hash == H_(e79b999f,42ca3e85))  {  /* pack */
+      (lj_str_indep_hash(cp->str)) == H_(e79b999f,42ca3e85))  {  /* pack */
     cp_next(cp);
     cp_check(cp, '(');
     if (cp->tok == CTOK_IDENT) {
-      if (cp->str->hash == H_(738e923c,a1b65954)) {  /* push */
+      if (lj_str_indep_hash(cp->str) == H_(738e923c,a1b65954)) {  /* push */
 	if (cp->curpack < CPARSE_MAX_PACKSTACK) {
 	  cp->packstack[cp->curpack+1] = cp->packstack[cp->curpack];
 	  cp->curpack++;
 	}
-      } else if (cp->str->hash == H_(6c71cf27,6c71cf27)) {  /* pop */
+      } else if (lj_str_indep_hash(cp->str) == H_(6c71cf27,6c71cf27)) {  /* pop */
 	if (cp->curpack > 0) cp->curpack--;
       } else {
 	cp_errmsg(cp, cp->tok, LJ_ERR_XSYMBOL);
@@ -1772,12 +1787,12 @@ static void cp_decl_multi(CPState *cp)
 	cp_line(cp, hashline);
 	continue;
       } else if (tok == CTOK_IDENT &&
-		 cp->str->hash == H_(187aab88,fcb60b42)) { /* line */
+		 lj_str_indep_hash(cp->str) == H_(187aab88,fcb60b42)) { /* line */
 	if (cp_next(cp) != CTOK_INTEGER) cp_err_token(cp, tok);
 	cp_line(cp, hashline);
 	continue;
       } else if (tok == CTOK_IDENT &&
-	  cp->str->hash == H_(f5e6b4f8,1d509107)) { /* pragma */
+	  lj_str_indep_hash(cp->str) == H_(f5e6b4f8,1d509107)) { /* pragma */
 	cp_pragma(cp, hashline);
 	continue;
       } else {

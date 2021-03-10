@@ -1,6 +1,6 @@
 /*
 ** VM error messages.
-** Copyright (C) 2005-2016 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2017 Mike Pall. See Copyright Notice in luajit.h
 */
 
 /* This file may be included multiple times with different ERRDEF macros. */
@@ -181,6 +181,7 @@ ERRDEF(FFI_CBACKOV,	"too many callbacks")
 #endif
 ERRDEF(FFI_NYIPACKBIT,	"NYI: packed bit fields")
 ERRDEF(FFI_NYICALL,	"NYI: cannot call this C function (yet)")
+ERRDEF(FFI_NOTLOAD,	"ffi module not loaded (yet)")
 #endif
 
 #undef ERRDEF

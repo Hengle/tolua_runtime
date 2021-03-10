@@ -8,13 +8,14 @@ include $(PREBUILT_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_FORCE_STATIC_EXECUTABLE := true
 LOCAL_MODULE := tolua
-LOCAL_C_INCLUDES := $(LOCAL_PATH)/../../luajit/src
+LOCAL_C_INCLUDES := $(LOCAL_PATH)/../../luajit-2.1/src
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../../
 
-LOCAL_CPPFLAGS := -O3
-LOCAL_CFLAGS :=  -O3 -std=gnu99
+LOCAL_CPPFLAGS := -O2
+LOCAL_CFLAGS :=  -O2 -std=gnu99
 LOCAL_SRC_FILES :=	../../tolua.c \
 					../../int64.c \
+					../../uint64.c \
 					../../pb.c \
 					../../lpeg.c \
 					../../struct.c \
@@ -34,7 +35,6 @@ LOCAL_SRC_FILES :=	../../tolua.c \
  					../../luasocket/timeout.c \
  					../../luasocket/udp.c \
  					../../luasocket/usocket.c \
- 					../../luasocket/compat.c \
-
+ 					
 LOCAL_WHOLE_STATIC_LIBRARIES += libluajit
 include $(BUILD_SHARED_LIBRARY)

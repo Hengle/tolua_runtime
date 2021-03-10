@@ -1,6 +1,6 @@
 /*
 ** JIT library.
-** Copyright (C) 2005-2016 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2017 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #define lib_jit_c
@@ -141,6 +141,21 @@ LJLIB_CF(jit_attach)
   return 0;
 }
 
+LJLIB_CF(jit_prngstate)
+{
+#if LJ_HASJIT
+  jit_State *J = L2J(L);
+  int32_t cur = (int32_t)J->prngstate;
+  if (L->base < L->top && !tvisnil(L->base)) {
+    J->prngstate = (uint32_t)lj_lib_checkint(L, 1);
+  }
+#else
+  int32_t cur = 0;
+#endif
+  setintV(L->top++, cur);
+  return 1;
+}
+
 LJLIB_PUSH(top-5) LJLIB_SET(os)
 LJLIB_PUSH(top-4) LJLIB_SET(arch)
 LJLIB_PUSH(top-3) LJLIB_SET(version_num)
@@ -204,6 +219,7 @@ LJLIB_CF(jit_util_funcinfo)
     lua_setfield(L, -2, "source");
     lj_debug_pushloc(L, pt, pc);
     lua_setfield(L, -2, "loc");
+    setprotoV(L, lj_tab_setstr(L, t, lj_str_newlit(L, "proto")), pt);
   } else {
     GCfunc *fn = funcV(L->base);
     GCtab *t;
@@ -223,6 +239,7 @@ LJLIB_CF(jit_util_funcbc)
 {
   GCproto *pt = check_Lproto(L, 0);
   BCPos pc = (BCPos)lj_lib_checkint(L, 2);
+  int lineinfo = lj_lib_optint(L, 3, 0);
   if (pc < pt->sizebc) {
     BCIns ins = proto_bc(pt)[pc];
     BCOp op = bc_op(ins);
@@ -230,6 +247,11 @@ LJLIB_CF(jit_util_funcbc)
     setintV(L->top, ins);
     setintV(L->top+1, lj_bc_mode[op]);
     L->top += 2;
+    if (lineinfo) {
+      setintV(L->top, lj_debug_line(pt, pc));
+      L->top += 1;
+      return 3;
+    }
     return 2;
   }
   return 0;
@@ -668,6 +690,11 @@ static uint32_t jit_cpudetect(lua_State *L)
       if (fam >= 0x00000f00)  /* K8, K10. */
 	flags |= JIT_F_PREFER_IMUL;
     }
+    if (vendor[0] >= 7) {
+      uint32_t xfeatures[4];
+      lj_vm_cpuid(7, xfeatures);
+      flags |= ((xfeatures[1] >> 8)&1) * JIT_F_BMI2;
+    }
 #endif
   }
   /* Check for required instruction set support on x86 (unnecessary on x64). */
@@ -710,18 +737,24 @@ static uint32_t jit_cpudetect(lua_State *L)
 #if LJ_HASJIT
   /* Compile-time MIPS CPU detection. */
 #if LJ_ARCH_VERSION >= 20
-  flags |= JIT_F_MIPS32R2;
+  flags |= JIT_F_MIPSXXR2;
 #endif
   /* Runtime MIPS CPU detection. */
 #if defined(__GNUC__)
-  if (!(flags & JIT_F_MIPS32R2)) {
+  if (!(flags & JIT_F_MIPSXXR2)) {
     int x;
+#ifdef __mips16
+    x = 0;  /* Runtime detection is difficult. Ensure optimal -march flags. */
+#else
     /* On MIPS32R1 rotr is treated as srl. rotr r2,r2,1 -> srl r2,r2,1. */
     __asm__("li $2, 1\n\t.long 0x00221042\n\tmove %0, $2" : "=r"(x) : : "$2");
-    if (x) flags |= JIT_F_MIPS32R2;  /* Either 0x80000000 (R2) or 0 (R1). */
+#endif
+    if (x) flags |= JIT_F_MIPSXXR2;  /* Either 0x80000000 (R2) or 0 (R1). */
   }
 #endif
 #endif
+#elif LJ_TARGET_S390X
+  /* No optional CPU features to detect (for now). */
 #else
 #error "Missing CPU detection for this architecture"
 #endif

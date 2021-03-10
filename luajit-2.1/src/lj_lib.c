@@ -1,6 +1,6 @@
 /*
 ** Library function support.
-** Copyright (C) 2005-2016 Mike Pall. See Copyright Notice in luajit.h
+** Copyright (C) 2005-2017 Mike Pall. See Copyright Notice in luajit.h
 */
 
 #define lj_lib_c
@@ -301,3 +301,10 @@ int lj_lib_checkopt(lua_State *L, int narg, int def, const char *lst)
   return def;
 }
 
+GCcdata *lj_lib_checkcdata(lua_State *L, int narg)
+{
+  TValue *o = L->base + narg-1;
+  if (!(o < L->top && tviscdata(o)))
+    lj_err_argt(L, narg, LUA_TCDATA);
+  return cdataV(o);
+}
